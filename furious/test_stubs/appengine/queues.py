@@ -9,6 +9,7 @@ Advanced app engine features such as automatic retries are not implemented.
 import base64
 import copy
 import os
+import urllib2
 import uuid
 
 from furious.context._local import _clear_context
@@ -37,8 +38,6 @@ def _execute_task(task):
     body = base64.b64decode(task['body'])
     return_code, func_path = process_async_task(task['headers'], body)
 
-    # TODO: Possibly do more with return_codes.
-
     # Ensure users have not modified the execution environment.
     modified_environment = False
 
@@ -53,6 +52,14 @@ def _execute_task(task):
     del os.environ['REQUEST_ID_HASH']
 
     # Now that our environment changes are cleaned up, raise any exceptions.
+
+    # Raise an exception for HTTP error codes.
+    if return_code >= 400:
+        raise urllib2.HTTPError(url="", code=return_code,
+                                msg=body + ", " + func_path,
+                                hdrs=task['headers'], fp=None)
+
+    # Raise an exception if the environment was modified.
     if modified_environment:
         raise EnvModifiedException(env_error_msg)
 

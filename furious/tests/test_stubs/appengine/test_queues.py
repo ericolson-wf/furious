@@ -122,6 +122,45 @@ class TestExecuteTask(unittest.TestCase):
         self.assertFalse('REQUEST_ID_HASH' in os.environ)
         self.assertFalse(hasattr(_local._local_context, 'registry'))
 
+    @patch('furious.test_stubs.appengine.queues.process_async_task')
+    def test_execute_task_400(self, process_async_task):
+        """When process_async_task returns an HTTP error code to
+        _execute_task, raise an exception with the same error code.
+        Ensure the task's environment is cleaned up.
+        """
+
+        import urllib2
+
+        from furious.context import _local
+        from furious.test_stubs.appengine.queues import _execute_task
+
+        # Create the async_options to call the target, Message()
+        async_options = {'job': ('test.path', None, None)}
+
+        body = base64.b64encode(json.dumps(async_options))
+
+        task = {'body': body, 'headers': ''}
+
+        # Force an error code return value.
+        process_async_task.return_value = (400, 'test.path')
+
+        # Call _execute_task() which gets an error from process_async_task.
+        error = None
+        try:
+            _execute_task(task)
+        except urllib2.HTTPError, e:
+            error = e
+
+        # Ensure an HTTPError is raised.
+        self.assertTrue(error)
+
+        # Ensure the error has the correct error code.
+        self.assertEqual(error.code, 400)
+
+        # Make sure context cleanup worked
+        self.assertFalse('REQUEST_ID_HASH' in os.environ)
+        self.assertFalse(hasattr(_local._local_context, 'registry'))
+
 
 class TestExecuteQueue(unittest.TestCase):
     """Ensure tasks from queues are executed."""

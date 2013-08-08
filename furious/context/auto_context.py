@@ -1,5 +1,10 @@
 
-from furious.context.context import Context
+from .context import Context
+from .context import _task_batcher
+from .context import _future_tasks_get_result
+from .context.task_futures import _insert_tasks_async
+
+from .. import errors
 
 
 class AutoContext(Context):
@@ -15,6 +20,15 @@ class AutoContext(Context):
         self.batch_size = batch_size
 
         self._num_tasks_inserted = 0
+
+        self._insert_tasks_async = options.pop(
+            'insert_tasks_async', _insert_tasks_async)
+        if not callable(self._insert_tasks_async):
+            raise TypeError(
+                'You must provide a valid insert_tasks_async function.')
+
+        # Futures representing async tasks.
+        self.task_futures_info = []
 
     def add(self, target, args=None, kwargs=None, **options):
         """Add an Async job to this context.
@@ -42,6 +56,18 @@ class AutoContext(Context):
         if len(self.tasks) >= self.batch_size:
             self._handle_tasks()
 
+    def _handle_tasks_insert(self, batch_size=None):
+        """Convert all Async's into tasks, then insert them into queues."""
+        if self._tasks_inserted:
+            raise errors.ContextAlreadyStartedError(
+                "This Context has already had its tasks inserted.")
+
+        task_map = self._get_tasks_by_queue()
+        for queue, tasks in task_map.iteritems():
+            for batch in _task_batcher(tasks, batch_size=batch_size):
+                self.task_futures_info.append(
+                    self._insert_tasks_async(batch, queue=queue))
+
     def _handle_tasks(self):
         """Convert Async's into tasks, then insert them into queues.
         Similar to the default _handle_tasks, but don't mark all
@@ -57,8 +83,11 @@ class AutoContext(Context):
 
         super(AutoContext, self).__exit__(exc_type, exc_val, exc_tb)
 
+        # Ensure tasks have been inserted by getting future results.
+        while self.task_futures_info:
+            self.task_futures_info = _future_tasks_get_result(self.futures)
+
         # Mark all tasks inserted.
         self._tasks_inserted = True
 
         return False
-

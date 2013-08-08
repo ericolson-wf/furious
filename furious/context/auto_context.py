@@ -1,8 +1,8 @@
 
 from .context import Context
 from .context import _task_batcher
-from .context import _future_tasks_get_result
-from .context.task_futures import _insert_tasks_async
+from .task_futures import _future_tasks_get_result
+from .task_futures import _insert_tasks_async
 
 from .. import errors
 
@@ -85,7 +85,8 @@ class AutoContext(Context):
 
         # Ensure tasks have been inserted by getting future results.
         while self.task_futures_info:
-            self.task_futures_info = _future_tasks_get_result(self.futures)
+            self.task_futures_info = _future_tasks_get_result(
+                self.task_futures_info)
 
         # Mark all tasks inserted.
         self._tasks_inserted = True

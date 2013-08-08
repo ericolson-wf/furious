@@ -29,7 +29,7 @@ def _future_tasks_get_result(futures):
 
     for future_info in futures:
 
-        future = future_info['future']
+        future = future_info.future
 
         try:
             tasks = future.get_result()
@@ -38,14 +38,14 @@ def _future_tasks_get_result(futures):
                 taskqueue.TombstonedTaskError,
                 taskqueue.TransientError):
 
-            tasks = future_info['tasks']
+            tasks = future_info.tasks
 
             count = len(tasks)
             if count <= 1:
                 return
 
-            queue = future_info['queue']
-            transactional = future_info['transactional']
+            queue = future_info.queue
+            transactional = future_info.transactional
 
             reinserted_futures.append(
                 _insert_tasks_async(tasks[:count / 2], queue, transactional))

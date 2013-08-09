@@ -5,7 +5,7 @@ from collections import namedtuple
 FutureInfo = namedtuple('FutureInfo', "future tasks queue transactional")
 
 
-def _insert_tasks_async(tasks, queue, transactional=False):
+def insert_tasks_async(tasks, queue, transactional=False):
     """Insert a batch of tasks into the specified queue. If an error occurs
     during insertion, split the batch and retry until they are successfully
     inserted.
@@ -21,7 +21,7 @@ def _insert_tasks_async(tasks, queue, transactional=False):
     return FutureInfo(future, tasks, queue, transactional)
 
 
-def _future_tasks_get_result(futures):
+def future_tasks_get_result(futures):
 
     from google.appengine.api import taskqueue
 

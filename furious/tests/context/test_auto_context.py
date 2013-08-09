@@ -18,7 +18,6 @@ import unittest
 
 from google.appengine.ext import testbed
 
-from mock import Mock
 from mock import patch
 
 

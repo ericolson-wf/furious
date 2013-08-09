@@ -24,8 +24,8 @@ is exited.
 
 from .context import Context
 from .context import _task_batcher
-from .task_futures import _future_tasks_get_result
-from .task_futures import _insert_tasks_async
+from .task_futures import future_tasks_get_result
+from .task_futures import insert_tasks_async
 
 from .. import errors
 
@@ -44,7 +44,7 @@ class AutoContext(Context):
         self.async_insert = async_insert
 
         self._insert_tasks_async = options.pop(
-            'insert_tasks_async', _insert_tasks_async)
+            'insert_tasks_async', insert_tasks_async)
         if not callable(self._insert_tasks_async):
             raise TypeError(
                 'You must provide a valid insert_tasks_async function.')
@@ -112,7 +112,7 @@ class AutoContext(Context):
 
         # Ensure tasks have been inserted by getting future results.
         while self.task_futures_info:
-            self.task_futures_info = _future_tasks_get_result(
+            self.task_futures_info = future_tasks_get_result(
                 self.task_futures_info)
 
         # Mark all tasks inserted.

@@ -126,3 +126,51 @@ class TestAutoContextTestCase(unittest.TestCase):
 
         # Ensure queue.add() was never called.
         self.assertEqual(0, queue_add_mock.call_count)
+
+    @patch('google.appengine.api.taskqueue.Queue.add_async', auto_spec=True)
+    def test_async_add_job_to_context_multiple_batches_async(
+            self, queue_add_mock_async):
+        """Ensure adding more tasks than the batch_size causes multiple batches
+        to get inserted.  Ensure the futures are returned and st
+
+        Adding 3 asyncs with a batch_size of 2 should result in two queue.adds,
+        containing 2 and 1 task respectively.
+
+        Also ensure that the remaining task is inserted upon exiting the
+        context.
+        """
+        from furious.async import Async
+        from furious.context.auto_context import AutoContext
+
+        batch_size = 2
+
+        with AutoContext(batch_size, async_insert=True) as ctx:
+            # First batch
+            job1 = ctx.add('test', args=[1, 2])
+            job2 = ctx.add('test2', args=[1, 2])
+
+            # Second batch (not added until "with" section ends))
+            job3 = ctx.add('test3', args=[1, 2])
+
+            # Ensure that one future exists for the first group of tasks.
+            self.assertEqual(1, len(ctx.task_futures_info))
+
+            # Ensure the first two jobs were inserted in the first batch.
+            self.assertIsInstance(job1, Async)
+            self.assertIsInstance(job2, Async)
+            #queue_add_mock_async.assert_called_once()
+
+            self.assertIsInstance(job3, Async)
+
+            #Ensure only two tasks were inserted
+            tasks_added = queue_add_mock_async.call_args[0][0]
+            self.assertEqual(2, len(tasks_added))
+
+        # Ensure add has now been called twice.
+        self.assertEqual(2, queue_add_mock_async.call_count)
+        # Ensure only one task was inserted
+        tasks_added = queue_add_mock_async.call_args[0][0]
+        self.assertEqual(1, len(tasks_added))
+
+        # Ensure that no futures are left because they have been executed.
+        self.assertEqual(0, len(ctx.task_futures_info))

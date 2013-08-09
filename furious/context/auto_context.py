@@ -35,12 +35,13 @@ class AutoContext(Context):
     they are added to the context.  Inserted in batches if specified.
     """
 
-    def __init__(self, batch_size=None, **options):
+    def __init__(self, batch_size=None, async_insert=False, **options):
         """Setup this context in addition to accepting a batch_size."""
 
         Context.__init__(self, **options)
 
         self.batch_size = batch_size
+        self.async_insert = async_insert
 
         self._insert_tasks_async = options.pop(
             'insert_tasks_async', _insert_tasks_async)
@@ -87,8 +88,11 @@ class AutoContext(Context):
         task_map = self._get_tasks_by_queue()
         for queue, tasks in task_map.iteritems():
             for batch in _task_batcher(tasks, batch_size=batch_size):
-                self.task_futures_info.append(
-                    self._insert_tasks_async(batch, queue=queue))
+                if self.async_insert:
+                    self.task_futures_info.append(
+                        self._insert_tasks_async(batch, queue=queue))
+                else:
+                    self._insert_tasks(batch, queue=queue)
 
     def _handle_tasks(self):
         """Convert Async's into tasks, then insert them into queues.

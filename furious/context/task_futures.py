@@ -16,7 +16,7 @@ def _insert_tasks_async(tasks, queue, transactional=False):
         return
 
     future = taskqueue.Queue(
-        name=queue).add(tasks, transactional=transactional)
+        name=queue).add_async(tasks, transactional=transactional)
 
     return FutureInfo(future, tasks, queue, transactional)
 
